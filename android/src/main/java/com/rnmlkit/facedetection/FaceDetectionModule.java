@@ -2,9 +2,12 @@
 
 package com.rnmlkit.facedetection;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.net.Uri;
+import android.util.Base64;
 
 import androidx.annotation.NonNull;
 
@@ -271,12 +274,27 @@ public class FaceDetectionModule extends ReactContextBaseJavaModule {
         return map;
     }
 
+    private InputImage readInputImage(String url) throws IOException {
+      if (url.startsWith("data:")) {
+        String data = url.substring(url.indexOf(",") + 1);
+
+        byte [] buffer = Base64.decode(data, Base64.DEFAULT);
+
+        Bitmap bitmap = BitmapFactory.decodeByteArray(buffer, 0, buffer.length);
+
+        return InputImage.fromBitmap(bitmap, 0);
+      }
+      else {
+        Uri uri = Uri.parse(url);
+
+        return InputImage.fromFilePath(reactContext, uri);
+      }
+    }
+
     @ReactMethod
     public void detect(String url, final ReadableMap optionsMap, final Promise promise) {
-        Uri uri = Uri.parse(url);
-        InputImage image;
         try {
-            image = InputImage.fromFilePath(reactContext, uri);
+            InputImage image = readInputImage(url);
             FaceDetectorOptions options = getOptions(optionsMap);
             FaceDetector detector = FaceDetection.getClient(options);
             detector.process(image)
