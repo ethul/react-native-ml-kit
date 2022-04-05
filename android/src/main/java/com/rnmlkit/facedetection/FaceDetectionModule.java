@@ -6,8 +6,10 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.PointF;
 import android.graphics.Rect;
+import android.media.ExifInterface;
 import android.net.Uri;
 import android.util.Base64;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -29,7 +31,9 @@ import com.google.mlkit.vision.face.FaceDetector;
 import com.google.mlkit.vision.face.FaceDetectorOptions;
 import com.google.mlkit.vision.face.FaceLandmark;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 public class FaceDetectionModule extends ReactContextBaseJavaModule {
@@ -274,15 +278,32 @@ public class FaceDetectionModule extends ReactContextBaseJavaModule {
         return map;
     }
 
+    private int exifRotation(ExifInterface exif) {
+      int orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
+
+      if (orientation == ExifInterface.ORIENTATION_ROTATE_90) return 90;
+      else if (orientation == ExifInterface.ORIENTATION_ROTATE_180) return 180;
+      else if (orientation == ExifInterface.ORIENTATION_ROTATE_270) return 270;
+      return 0;
+    }
+
     private InputImage readInputImage(String url) throws IOException {
       if (url.startsWith("data:")) {
         String data = url.substring(url.indexOf(",") + 1);
 
         byte [] buffer = Base64.decode(data, Base64.DEFAULT);
 
+        InputStream stream = new ByteArrayInputStream(buffer);
+
+        ExifInterface exif = new ExifInterface(stream);
+
+        int rotation = exifRotation(exif);
+
+        Log.d("FaceDetectionModule", "Exif rotation = " + rotation);
+
         Bitmap bitmap = BitmapFactory.decodeByteArray(buffer, 0, buffer.length);
 
-        return InputImage.fromBitmap(bitmap, 0);
+        return InputImage.fromBitmap(bitmap, rotation);
       }
       else {
         Uri uri = Uri.parse(url);
